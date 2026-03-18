@@ -25,6 +25,15 @@ Get-ChildItem -Path "fast-reid" -Recurse -Filter "*.py" | ForEach-Object {
 > Inference works, at least the `veri_sbs_R50-ibn` model weights from the (model zoo)[https://github.com/Erdfin/fast-reid/blob/master/MODEL_ZOO.md] works. Didn't run tests, so training might be broken.
 > - [Pull request #1](https://github.com/Erdfin/fast-reid/pull/1)
 
+Also modified
+- [docs/requirements.txt](https://github.com/Erdfin/fast-reid/blob/master/docs/requirements.txt)
+- [INSTALL.md](https://github.com/Erdfin/fast-reid/edit/master/INSTALL.md)
+
+to match my setup
+
+Still only tried inference on the `veri_sbs_R50-ibn` pretrained model from the [model zoo](https://github.com/Erdfin/fast-reid/blob/master/MODEL_ZOO.md) and nothing else
+
+
 <img src=".github/FastReID-Logo.png" width="300" >
 
 [![Gitter](https://badges.gitter.im/fast-reid/community.svg)](https://gitter.im/fast-reid/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
