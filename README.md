@@ -1,6 +1,6 @@
 ## Modifications
 Since Python 3.10 `collections.Mapping` changed to `collections.abc.Mapping`, I ran this powershell script to patch it well enough for inference to work so I could use the models from the zoo in newer python versions
-```
+```powershell
 Get-ChildItem -Path "fast-reid" -Recurse -Filter "*.py" | ForEach-Object {
     $content = Get-Content $_.FullName -Raw
     if ($content -match "from collections import.*\b(Mapping|Callable|MutableMapping|Sequence|MutableSequence|Iterable|Iterator|MutableSet)\b") {
@@ -33,6 +33,69 @@ to match my setup
 
 Still only tried inference on the `veri_sbs_R50-ibn` pretrained model from the [model zoo](https://github.com/Erdfin/fast-reid/blob/master/MODEL_ZOO.md) and nothing else
 
+## How to use
+This has more uses, but this is how I'm using it, and might be wrong in some or another level but it works so:
+```python
+import cv2
+import numpy as np
+import torch
+
+# Vehicle Re-ID: fast-reid SBS(R50-ibn) trained on VeRi-776
+FASTREID_ROOT  = "fast-reid"            # path to cloned repo
+REID_CONFIG    = "fast-reid/configs/VeRi/sbs_R50-ibn.yml"
+REID_WEIGHTS   = "veri_sbs_R50-ibn.pth"
+
+sys.path.insert(0, FASTREID_ROOT)
+
+from fastreid.config import get_cfg
+from fastreid.engine import DefaultPredictor
+
+def _build_reid_predictor() -> DefaultPredictor:
+    cfg = get_cfg()
+    cfg.merge_from_file(REID_CONFIG)
+    cfg.MODEL.WEIGHTS           = REID_WEIGHTS
+    cfg.MODEL.DEVICE            = DEVICE
+    # NUM_CLASSES = 0 tells the BNneck head to skip the classifier projection
+    # and return the normalised embedding directly. The checkpoint will log
+    # warnings about heads.classifier.weight being unused — expected, not an error.
+    cfg.MODEL.HEADS.NUM_CLASSES = 0
+    cfg.freeze()
+    return DefaultPredictor(cfg)
+
+reid        = _build_reid_predictor()
+
+def compute_vehicle_embedding(crop: np.ndarray) -> np.ndarray:
+    """
+    Returns a L2-normalised 2048-dim float32 Re-ID embedding for a vehicle crop.
+    DefaultPredictor.__call__ expects a preprocessed CHW float tensor, not a raw
+    numpy array — we handle the resize/normalise/convert step manually here.
+    """
+    # Resize to the input size the VeRi config expects (256 x 256)
+    resized = cv2.resize(crop, (256, 256))                         # BGR uint8, HWC
+    img = resized.astype(np.float32)
+
+    # fast-reid normalisation: BGR mean/std scaled to [0,255] range
+    pixel_mean = np.array([0.485 * 255, 0.456 * 255, 0.406 * 255], dtype=np.float32)
+    pixel_std  = np.array([0.229 * 255, 0.224 * 255, 0.225 * 255], dtype=np.float32)
+    img = (img - pixel_mean) / pixel_std                           # HWC float32
+
+    tensor = torch.as_tensor(img.transpose(2, 0, 1)).unsqueeze(0)  # (1, 3, H, W)
+
+    with torch.no_grad():
+        outputs = reid.model({"images": tensor.to(reid.model.device)})
+
+    # With NUM_CLASSES=0 the head may return the feature tensor directly
+    # (instead of the usual {"features": tensor} dict).
+    if isinstance(outputs, dict):
+        feat_tensor = outputs["features"]
+    else:
+        feat_tensor = outputs
+    feat = feat_tensor.cpu().numpy()[0].astype(np.float32)
+    feat /= np.linalg.norm(feat) + 1e-6
+    return feat
+```
+
+`compute_vehicle_embedding` is meant to be fed the crop of the image with the vehicle you want it to look at
 
 <img src=".github/FastReID-Logo.png" width="300" >
 
