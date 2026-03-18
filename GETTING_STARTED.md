@@ -7,7 +7,7 @@ But if your network is not connected, you can download pre-train models manually
 
 If you want to use other pre-train models, such as MoCo pre-train, you can download by yourself and set the pre-train model path in `configs/Base-bagtricks.yml`.
 
-## Compile with cython to accelerate evalution
+## Compile with cython to accelerate evaluation
 
 ```bash
 cd fastreid/evaluation/rank_cylib; make all
