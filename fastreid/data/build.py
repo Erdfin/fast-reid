@@ -16,7 +16,7 @@ if TORCH_MAJOR == 1 and TORCH_MINOR < 8:
 else:
     string_classes = str
 
-from collections import Mapping
+from collections.abc import Mapping
 
 from fastreid.config import configurable
 from fastreid.utils import comm
@@ -192,3 +192,4 @@ def fast_batch_collator(batched_inputs):
         return torch.tensor(batched_inputs)
     elif isinstance(elem, string_classes):
         return batched_inputs
+
