@@ -1,3 +1,30 @@
+## Modifications
+Since Python 3.10 `collections.Mapping` changed to `collections.abc.Mapping`, I ran this powershell script to patch it well enough for inference to work so I could use the models from the zoo in newer python versions
+```
+Get-ChildItem -Path "fast-reid" -Recurse -Filter "*.py" | ForEach-Object {
+    $content = Get-Content $_.FullName -Raw
+    if ($content -match "from collections import.*\b(Mapping|Callable|MutableMapping|Sequence|MutableSequence|Iterable|Iterator|MutableSet)\b") {
+        $content = $content -replace "from collections import (Mapping|Callable|MutableMapping|Sequence|MutableSequence|Iterable|Iterator|MutableSet)", "from collections.abc import `$1"
+        Set-Content $_.FullName $content
+        Write-Host "Patched: $($_.FullName)"
+    }
+}
+
+(Get-Content "fast-reid\fastreid\evaluation\testing.py" -Raw) -replace "from collections.abc import Mapping, OrderedDict", "from collections.abc import Mapping`nfrom collections import OrderedDict" | Set-Content "fast-reid\fastreid\evaluation\testing.py"
+
+Get-ChildItem -Path "fast-reid" -Recurse -Filter "*.py" | ForEach-Object {
+    $content = Get-Content $_.FullName -Raw
+    if ($content -match "from collections\.abc import .*OrderedDict") {
+        $content = $content -replace "from collections\.abc import (.*?)OrderedDict,?\s*", "from collections.abc import `$1`nfrom collections import OrderedDict`n"
+        $content = $content -replace "from collections\.abc import \s*\n", ""
+        Set-Content $_.FullName $content
+        Write-Host "Fixed: $($_.FullName)"
+    }
+}
+```
+> Inference works, at least the `veri_sbs_R50-ibn` model weights from the (model zoo)[https://github.com/Erdfin/fast-reid/blob/master/MODEL_ZOO.md] works. Didn't run tests, so training might be broken.
+> - [Pull request #1](https://github.com/Erdfin/fast-reid/pull/1)
+
 <img src=".github/FastReID-Logo.png" width="300" >
 
 [![Gitter](https://badges.gitter.im/fast-reid/community.svg)](https://gitter.im/fast-reid/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
